@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blackout Poetry</title>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+DW+Pica&display=swap" rel="stylesheet">
+<style>
+:root{--desk:#2b211a;--desk2:#3a2d23;--paper:#efe3c6;--paper2:#e6d6b0;--ink:#2a2118;--ink-soft:#6b5a45;--ui:#f3e9d2}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:radial-gradient(ellipse at top,var(--desk2),var(--desk) 70%) fixed;color:var(--ui);font-family:"IM Fell DW Pica",Georgia,serif;padding:0 0 40px}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 18px;border-bottom:1px solid #0006}
+h1{font:italic 400 1.5rem "IM Fell English",Georgia,serif;margin:0 14px 0 0}
+input[type=search]{flex:1 1 220px;min-width:0;padding:9px 12px;border:1px solid #8a7556;border-radius:3px;background:#f6edd6;color:var(--ink);font:inherit;font-size:1rem}
+button{font:inherit;font-size:.95rem;padding:8px 13px;border:1px solid #8a7556;border-radius:3px;background:#4a3a2c;color:var(--ui);cursor:pointer}
+button:hover{background:#5a4838}button:focus-visible,input:focus-visible,.pick:focus-visible{outline:2px solid #e8b04a;outline-offset:2px}
+button[aria-pressed=true]{background:var(--ui);color:var(--ink)}
+.fbtn{font-size:.95rem;padding:8px 13px;border:1px solid #8a7556;border-radius:3px;background:#4a3a2c;color:var(--ui);cursor:pointer}
+#shelf{max-width:760px;margin:14px auto 0;padding:0 18px}
+.pick{display:block;width:100%;text-align:left;margin:0 0 6px;padding:10px 12px;background:#33271e;border:1px solid #5a4838;border-radius:3px}
+.pick b{font-weight:400;font-size:1.05rem}.pick span{display:block;color:#bfae92;font-size:.88rem}
+#msg{max-width:760px;margin:12px auto;padding:0 18px;color:#d9c9a8;font-style:italic}
+#stage{max-width:640px;margin:18px auto 0;padding:0 14px}
+#bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px}
+#bar .grp{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.page{position:relative;background:linear-gradient(90deg,#00000018 0,#0000 7%),radial-gradient(ellipse at 50% 40%,var(--paper),var(--paper2));color:var(--ink);padding:44px 46px 54px;border-radius:2px 5px 5px 2px;box-shadow:0 1px 0 #fff4 inset,0 18px 40px #0009,-6px 0 0 -2px #cdbb92,-9px 0 0 -3px #b9a67c;min-height:560px;touch-action:none;user-select:none;-webkit-user-select:none}
+.run{font:italic .85rem "IM Fell English",Georgia,serif;color:var(--ink-soft);text-align:center;margin:0 0 24px}
+.page p{margin:0 0 .9em;font:1.12rem/1.95 "IM Fell English",Georgia,serif;text-indent:1.6em;text-align:justify;hyphens:auto}
+.page p:first-of-type{text-indent:0}
+.w{position:relative;display:inline-block;cursor:crosshair;text-indent:0}
+.w:hover{background:#c9a8531f}
+.w.x{color:transparent}
+.w.x::after{content:"";position:absolute;left:-3px;right:-3px;top:var(--t,5%);bottom:var(--b,2%);background:linear-gradient(#050505,#161616 45%,#050505);border-radius:var(--r1,3px) var(--r2,5px) var(--r3,2px) var(--r4,6px);clip-path:polygon(0 var(--a,6%),4% 0,96% var(--c,3%),100% var(--d,10%),99% 90%,94% 100%,5% var(--e,96%),0 88%);transform:rotate(var(--rot,0deg));transform-origin:left center;box-shadow:0 0 1.5px #000;animation:stroke .16s ease-out}
+@keyframes stroke{from{transform:rotate(var(--rot,0deg)) scaleX(0)}}
+.w.x.hide{opacity:0}
+.folio{position:absolute;bottom:20px;left:0;right:0;text-align:center;font:italic .9rem "IM Fell English",Georgia,serif;color:var(--ink-soft)}
+@media(max-width:520px){.page{padding:30px 22px 48px}.page p{font-size:1rem;line-height:1.85}}
+@media(prefers-reduced-motion:reduce){.w.x::after{animation:none}}
+#paste{display:none;max-width:760px;margin:12px auto;padding:0 18px}
+#paste textarea{width:100%;min-height:120px;padding:10px;background:#f6edd6;color:var(--ink);border:1px solid #8a7556;border-radius:3px;font:1rem Georgia,serif}
+</style>
+</head>
+<body>
+<header>
+  <h1>Blackout Poetry</h1>
+  <input id="q" type="search" placeholder="Search Project Gutenberg: title or author" aria-label="Search Project Gutenberg">
+  <button id="go">Search</button>
+  <button id="pasteBtn">Paste your own</button>
+  <label class="fbtn" for="file">Open .txt file</label><input id="file" type="file" accept=".txt,text/plain" hidden>
+</header>
+<div id="msg">Search for a book, or open the sample page below to start striking words.</div>
+<div id="shelf"></div>
+<div id="paste"><textarea id="pt" placeholder="Paste any text here"></textarea><br><button id="ptGo" style="margin-top:6px">Use this text</button></div>
+
+<main id="stage" hidden>
+  <div id="bar">
+    <div class="grp">
+      <button id="prev" aria-label="Previous page">Previous</button>
+      <button id="next" aria-label="Next page">Next</button>
+      <button id="rand">Random page</button>
+    </div>
+    <div class="grp">
+      <button id="tStrike" aria-pressed="true">Strike</button>
+      <button id="tKeep" aria-pressed="false">Restore</button>
+      <button id="all">Black out all</button>
+      <button id="clear">Clear</button>
+      <button id="copy">Copy poem</button>
+    </div>
+  </div>
+  <article class="page" id="page" aria-live="polite"></article>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const SAMPLE="It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\n\nHowever little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he is considered the rightful property of some one or other of their daughters.\n\n\"My dear Mr. Bennet,\" said his lady to him one day, \"have you heard that Netherfield Park is let at last?\"\n\nMr. Bennet replied that he had not.\n\n\"But it is,\" returned she; \"for Mrs. Long has just been here, and she told me all about it.\"\n\nMr. Bennet made no answer.\n\n\"Do you not want to know who has taken it?\" cried his wife impatiently.\n\n\"You want to tell me, and I have no objection to hearing it.\"\n\nThis was invitation enough.";
+let pages=[],cur=0,title="Sample",author="Jane Austen",struck={},tool="strike";
+
+// ---------- Cloudflare-backed Gutenberg API ----------
+const API_BASE="https://blackout-poetry-api.ctkkimbrell.workers.dev";
+async function apiFetch(path,ms=30000){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),ms);
+  try{
+    const response=await fetch(API_BASE+path,{signal:controller.signal});
+    if(!response.ok)throw new Error("API returned HTTP "+response.status);
+    return response;
+  }finally{clearTimeout(timer)}
+}
+async function getText(id){
+  const response=await apiFetch("/api/text?id="+encodeURIComponent(id),60000);
+  return response.text();
+}
+async function searchBooks(query){
+  const response=await apiFetch("/api/books?q="+encodeURIComponent(query));
+  return response.json();
+}
+async function search(){
+  const q=$("#q").value.trim(); if(!q)return;
+  $("#msg").textContent="Searching the shelves…";$("#shelf").innerHTML="";
+  try{
+    const d=await searchBooks(q);
+    if(!d.results.length){$("#msg").textContent="No books found. Try another title or author.";return}
+    $("#msg").textContent="Choose a book:";
+    d.results.filter(b=>b.media_type==="Text" && b.copyright===false && Object.keys(b.formats||{}).some(k=>k.startsWith("text/plain"))).slice(0,10).forEach(b=>{
+      const au=(b.authors[0]?.name||"Unknown").split(", ").reverse().join(" ");
+      const el=document.createElement("button");el.className="pick";
+      el.innerHTML="<b></b><span></span>";el.firstChild.textContent=b.title;el.lastChild.textContent=au;
+      el.onclick=()=>openBook(b.title,au,b.id);$("#shelf").append(el);
+    });
+  }catch(e){$("#msg").textContent="Search failed ("+e.message+"). Pick one of these popular books instead, or open a .txt file you downloaded from gutenberg.org.";popular()}
+}
+const POP=[[84,"Frankenstein","Mary Shelley"],[1342,"Pride and Prejudice","Jane Austen"],[345,"Dracula","Bram Stoker"],[11,"Alice's Adventures in Wonderland","Lewis Carroll"],[2701,"Moby Dick","Herman Melville"],[1661,"The Adventures of Sherlock Holmes","Arthur Conan Doyle"],[43,"Strange Case of Dr Jekyll and Mr Hyde","Robert Louis Stevenson"],[1400,"Great Expectations","Charles Dickens"]];
+function popular(){
+  const sh=$("#shelf");sh.innerHTML="";
+  POP.forEach(([id,t,a])=>{
+    const el=document.createElement("button");el.className="pick";el.innerHTML="<b></b><span></span>";
+    el.firstChild.textContent=t;el.lastChild.textContent=a;
+    el.onclick=()=>openBook(t,a,id);sh.append(el);
+  });
+}
+$("#file").onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  f.text().then(t=>{
+    const m=t.match(/Title:\s*(.+)/),a=t.match(/Author:\s*(.+)/);
+    let x=t.replace(/\r/g,"");const s=x.search(/\*\*\* ?START OF[^\n]*\n/);if(s>=0)x=x.slice(x.indexOf("\n",s)+1);
+    const en=x.search(/\*\*\* ?END OF/);if(en>=0)x=x.slice(0,en);
+    load(x,m?m[1].trim():f.name.replace(/\.txt$/i,""),a?a[1].trim():"",true);
+    $("#shelf").innerHTML="";$("#msg").textContent="Strike words with your mouse or finger. Drag across a line to cross out many at once.";
+  });
+};
+async function openBook(t,a,id){
+  $("#msg").textContent="Fetching “"+t+"”…";$("#shelf").innerHTML="";
+  try{
+    let txt=await getText(id);
+    txt=txt.replace(/\r/g,"");
+    const s=txt.search(/\*\*\* ?START OF[^\n]*\n/);if(s>=0)txt=txt.slice(txt.indexOf("\n",s)+1);
+    const e=txt.search(/\*\*\* ?END OF/);if(e>=0)txt=txt.slice(0,e);
+    load(txt,t,a,true);
+    $("#msg").textContent="Strike words with your mouse or finger. Drag across a line to cross out many at once.";
+  }catch(e){$("#msg").textContent="That book couldn't be fetched ("+e.message+"). Try another, or use Paste your own."}
+}
+
+// ---------- Paging ----------
+function load(txt,t,a,skipFront){
+  title=t;author=a;struck={};
+  let paras=txt.split(/\n\s*\n/).map(p=>p.replace(/\s+/g," ").trim()).filter(p=>p.split(" ").length>=8);
+  if(skipFront)paras=paras.slice(Math.min(6,Math.floor(paras.length/10)));
+  pages=[];let page=[],n=0;
+  for(const p of paras){
+    const wc=p.split(" ").length;
+    if(n+wc>190&&page.length){pages.push(page);page=[];n=0}
+    page.push(p);n+=wc;
+  }
+  if(page.length)pages.push(page);
+  cur=skipFront?Math.min(pages.length-1,Math.floor(Math.random()*Math.min(pages.length,40))):0;
+  $("#stage").hidden=false;render();
+}
+function rnd(a,b){return a+Math.random()*(b-a)}
+function render(){
+  const pg=$("#page");pg.innerHTML="";
+  const run=document.createElement("div");run.className="run";run.textContent=title+" — "+author;pg.append(run);
+  let wi=0;
+  pages[cur].forEach(p=>{
+    const el=document.createElement("p");
+    p.split(" ").forEach((w,i)=>{
+      const s=document.createElement("span");s.className="w";s.textContent=w;s.dataset.i=wi;
+      const st=[["--t",rnd(2,10)+"%"],["--b",rnd(0,8)+"%"],["--a",rnd(2,16)+"%"],["--c",rnd(0,10)+"%"],["--d",rnd(4,18)+"%"],["--e",rnd(88,99)+"%"],["--rot",rnd(-1.6,1.6)+"deg"],["--r1",rnd(2,7)+"px"],["--r2",rnd(2,8)+"px"],["--r3",rnd(1,6)+"px"],["--r4",rnd(3,9)+"px"]];
+      st.forEach(([k,v])=>s.style.setProperty(k,v));
+      if(struck[cur]?.has(wi))s.classList.add("x");
+      el.append(s,i<p.split(" ").length-1?" ":"");wi++;
+    });
+    pg.append(el);
+  });
+  const f=document.createElement("div");f.className="folio";f.textContent=(cur+1)+" of "+pages.length;pg.append(f);
+}
+function set(w,on){
+  const i=+w.dataset.i;(struck[cur]??=new Set());
+  on?struck[cur].add(i):struck[cur].delete(i);w.classList.toggle("x",on);
+}
+
+// ---------- Marking ----------
+let drawing=null;
+const pg=$("#page");
+pg.addEventListener("pointerdown",e=>{
+  const w=e.target.closest(".w");if(!w)return;
+  e.preventDefault();pg.setPointerCapture(e.pointerId);
+  drawing=tool==="strike";set(w,drawing);
+});
+pg.addEventListener("pointermove",e=>{
+  if(drawing===null)return;
+  const w=document.elementFromPoint(e.clientX,e.clientY)?.closest?.(".w");
+  if(w&&w.classList.contains("x")!==drawing)set(w,drawing);
+});
+["pointerup","pointercancel"].forEach(ev=>pg.addEventListener(ev,()=>drawing=null));
+
+// ---------- Controls ----------
+function setTool(t){tool=t;$("#tStrike").setAttribute("aria-pressed",t==="strike");$("#tKeep").setAttribute("aria-pressed",t==="keep")}
+$("#tStrike").onclick=()=>setTool("strike");$("#tKeep").onclick=()=>setTool("keep");
+$("#all").onclick=()=>{const s=struck[cur]=new Set();document.querySelectorAll(".w").forEach(w=>{s.add(+w.dataset.i);w.classList.add("x")});setTool("keep");$("#msg").textContent="Now switch on Restore and click the words you want to keep."};
+$("#clear").onclick=()=>{struck[cur]=new Set();render()};
+$("#prev").onclick=()=>{if(cur>0){cur--;render();scrollTo(0,0)}};
+$("#next").onclick=()=>{if(cur<pages.length-1){cur++;render();scrollTo(0,0)}};
+$("#rand").onclick=()=>{cur=Math.floor(Math.random()*pages.length);render()};
+$("#copy").onclick=()=>{
+  const ps=[...document.querySelectorAll(".page p")].map(p=>[...p.querySelectorAll(".w:not(.x)")].map(w=>w.textContent).join(" ")).filter(Boolean);
+  navigator.clipboard?.writeText(ps.join("\n")).then(()=>{$("#copy").textContent="Copied";setTimeout(()=>$("#copy").textContent="Copy poem",1400)});
+};
+document.addEventListener("keydown",e=>{if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA")return;if(e.key==="ArrowRight")$("#next").click();if(e.key==="ArrowLeft")$("#prev").click()});
+$("#go").onclick=search;$("#q").addEventListener("keydown",e=>{if(e.key==="Enter")search()});
+$("#pasteBtn").onclick=()=>{const p=$("#paste");p.style.display=p.style.display==="block"?"none":"block"};
+$("#ptGo").onclick=()=>{const t=$("#pt").value.trim();if(t){load(t,"Your text","",false);$("#paste").style.display="none"}};
+load(SAMPLE,"Pride and Prejudice","Jane Austen",false);
+popular();
+</script>
+</body>
+</html>
