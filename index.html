@@ -227,58 +227,34 @@ $("#savePng").onclick=async()=>{
   button.textContent="Saving…";
   try{
     await document.fonts.ready;
-    // Measure the live page before html2canvas makes its offscreen clone.
-    // All rectangles are relative to the page, never the viewport.
-    const pageRect = page.getBoundingClientRect();
-    const inkRects = [...page.querySelectorAll(".w.x:not(.hide)")].map(word => {
-      const rect = word.getBoundingClientRect();
-      const style = getComputedStyle(word);
-      return {
-        x: rect.left - pageRect.left,
-        y: rect.top - pageRect.top,
-        width: rect.width,
-        height: rect.height,
-        rotation: parseFloat(style.getPropertyValue("--rot")) || 0
-      };
-    });
-
-    // Capture only the page artwork. Suppress the CSS-generated ink in
-    // the capture; we paint it ourselves using measured page coordinates.
+    // Render ink in the same cloned layout as the text. No coordinate math.
+    // html2canvas is reliable with solid backgrounds on inline-block words;
+    // the live page keeps its original decorative pseudo-element strokes.
     const canvas = await html2canvas(page, {
       backgroundColor: null,
       scale: 2,
       useCORS: true,
       logging: false,
+      scrollX: 0,
+      scrollY: -window.scrollY,
       onclone: clonedDocument => {
         const style = clonedDocument.createElement("style");
         style.textContent = `
-          .w.x::after { content:none!important; animation:none!important; }
-          .w:hover { background:transparent!important; }
+          .w.x::after { content:none!important; display:none!important; }
+          .w.x:not(.hide) {
+            background:#080808!important;
+            color:transparent!important;
+            border-radius:3px!important;
+            box-shadow:0 0 0 2px #080808!important;
+          }
+          .w.x.hide { opacity:0!important; }
+          .w:hover { background-color:transparent; }
+          .w.x:not(.hide):hover { background:#080808!important; }
+          .w, .w.x { animation:none!important; transform:none!important; }
         `;
         clonedDocument.head.appendChild(style);
       }
     });
-
-    const ctx = canvas.getContext("2d");
-    const scaleX = canvas.width / pageRect.width;
-    const scaleY = canvas.height / pageRect.height;
-    const radius = 3;
-
-    // Draw ink with explicit canvas dimensions, so device pixel ratio
-    // and screenshot scaling cannot enlarge or shift the marks.
-    for (const rect of inkRects) {
-      const x = (rect.x - 2) * scaleX;
-      const y = (rect.y + rect.height * 0.12) * scaleY;
-      const w = (rect.width + 4) * scaleX;
-      const h = rect.height * 0.76 * scaleY;
-      if (w <= 0 || h <= 0) continue;
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(x, y, w, h, radius * Math.min(scaleX, scaleY));
-      ctx.fillStyle = "#080808";
-      ctx.fill();
-      ctx.restore();
-    }
     const safeTitle=(title||"blackout-poem")
       .toLowerCase()
       .normalize("NFKD")
