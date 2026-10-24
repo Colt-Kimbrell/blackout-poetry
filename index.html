@@ -66,11 +66,13 @@ button[aria-pressed=true]{background:var(--ui);color:var(--ink)}
       <button id="all">Black out all</button>
       <button id="clear">Clear</button>
       <button id="copy">Copy poem</button>
+      <button id="savePng" title="Download this blackout page as a PNG image">Save as Image</button>
     </div>
   </div>
   <article class="page" id="page" aria-live="polite"></article>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <script>
 const $=s=>document.querySelector(s);
 const SAMPLE="It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.\n\nHowever little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he is considered the rightful property of some one or other of their daughters.\n\n\"My dear Mr. Bennet,\" said his lady to him one day, \"have you heard that Netherfield Park is let at last?\"\n\nMr. Bennet replied that he had not.\n\n\"But it is,\" returned she; \"for Mrs. Long has just been here, and she told me all about it.\"\n\nMr. Bennet made no answer.\n\n\"Do you not want to know who has taken it?\" cried his wife impatiently.\n\n\"You want to tell me, and I have no objection to hearing it.\"\n\nThis was invitation enough.";
@@ -208,6 +210,65 @@ $("#copy").onclick=()=>{
   const ps=[...document.querySelectorAll(".page p")].map(p=>[...p.querySelectorAll(".w:not(.x)")].map(w=>w.textContent).join(" ")).filter(Boolean);
   navigator.clipboard?.writeText(ps.join("\n")).then(()=>{$("#copy").textContent="Copied";setTimeout(()=>$("#copy").textContent="Copy poem",1400)});
 };
+// ---------- Export current parchment page as a PNG ----------
+$("#savePng").onclick=async()=>{
+  const button=$("#savePng");
+  const page=$("#page");
+  if($( "#stage" ).hidden || !pages.length){
+    $("#msg").textContent="Open a book or paste some text before saving a poem.";
+    return;
+  }
+  if(typeof html2canvas!=="function"){
+    $("#msg").textContent="The image exporter could not load. Check your connection and refresh the page.";
+    return;
+  }
+  const previousLabel=button.textContent;
+  button.disabled=true;
+  button.textContent="Saving…";
+  try{
+    await document.fonts.ready;
+    const canvas=await html2canvas(page,{
+      backgroundColor:null,
+      scale:Math.min(2,window.devicePixelRatio||2),
+      useCORS:true,
+      logging:false,
+      scrollX:0,
+      scrollY:-window.scrollY,
+      onclone:clonedDocument=>{
+        // Prevent capture mid-animation and remove hover effects.
+        const style=clonedDocument.createElement("style");
+        style.textContent=".w.x::after{animation:none!important}.w:hover{background:transparent!important}";
+        clonedDocument.head.appendChild(style);
+      }
+    });
+    const safeTitle=(title||"blackout-poem")
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .replace(/[^a-z0-9]+/g,"-")
+      .replace(/^-+|-+$/g,"")
+      .slice(0,60)||"blackout-poem";
+    const filename=`blackout-${safeTitle}-page-${cur+1}.png`;
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
+    if(!blob)throw new Error("Could not create PNG");
+    const downloadUrl=URL.createObjectURL(blob);
+    const link=document.createElement("a");
+    link.href=downloadUrl;
+    link.download=filename;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(downloadUrl),60000);
+    $("#msg").textContent="PNG ready: "+filename;
+  }catch(error){
+    console.error("PNG export failed",error);
+    $("#msg").textContent="Couldn't save the image ("+error.message+"). Try again.";
+  }finally{
+    button.disabled=false;
+    button.textContent=previousLabel;
+  }
+};
+
 document.addEventListener("keydown",e=>{if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA")return;if(e.key==="ArrowRight")$("#next").click();if(e.key==="ArrowLeft")$("#prev").click()});
 $("#go").onclick=search;$("#q").addEventListener("keydown",e=>{if(e.key==="Enter")search()});
 $("#pasteBtn").onclick=()=>{const p=$("#paste");p.style.display=p.style.display==="block"?"none":"block"};
