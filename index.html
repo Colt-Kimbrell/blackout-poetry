@@ -227,48 +227,43 @@ $("#savePng").onclick=async()=>{
   button.textContent="Saving…";
   try{
     await document.fonts.ready;
+    // Make the export clone match the page's actual layout width.
+    // Add real ink elements in the clone instead of painting at
+    // viewport-derived coordinates (which caused oversized marks).
+    const pageWidth=page.getBoundingClientRect().width;
     const canvas=await html2canvas(page,{
       backgroundColor:null,
-      scale:Math.min(2,window.devicePixelRatio||2),
+      scale:2,
+      width:pageWidth,
+      windowWidth:Math.max(document.documentElement.clientWidth,Math.ceil(pageWidth)),
       useCORS:true,
       logging:false,
-      scrollX:0,
-      scrollY:-window.scrollY,
       onclone:clonedDocument=>{
-        // Prevent capture mid-animation and remove hover effects.
         const style=clonedDocument.createElement("style");
-        style.textContent=".w.x::after{content:none!important}.w:hover{background:transparent!important}";
+        style.textContent=`
+          .w.x::after{content:none!important;animation:none!important}
+          .w:hover{background:transparent!important}
+          .w .export-ink{
+            position:absolute;pointer-events:none;z-index:1;
+            left:-3px;right:-3px;
+            top:var(--t,5%);bottom:var(--b,2%);
+            background:linear-gradient(#050505,#161616 45%,#050505);
+            border-radius:var(--r1,3px) var(--r2,5px) var(--r3,2px) var(--r4,6px);
+            clip-path:polygon(0 var(--a,6%),4% 0,96% var(--c,3%),100% var(--d,10%),99% 90%,94% 100%,5% var(--e,96%),0 88%);
+            transform:rotate(var(--rot,0deg));transform-origin:left center;
+            box-shadow:0 0 1.5px #000;
+          }
+        `;
         clonedDocument.head.appendChild(style);
+        const clonePage=clonedDocument.getElementById("page");
+        for(const word of clonePage.querySelectorAll(".w.x:not(.hide)")){
+          const ink=clonedDocument.createElement("span");
+          ink.className="export-ink";
+          ink.setAttribute("aria-hidden","true");
+          word.appendChild(ink);
+        }
       }
     });
-    // Paint the blackout ink directly onto the PNG canvas.
-    // html2canvas does not reliably capture CSS ::after strokes.
-    // Suppress those pseudo-elements in the cloned document above,
-    // then draw each marked word as actual pixels on the canvas.
-    const context=canvas.getContext("2d");
-    const pageBounds=page.getBoundingClientRect();
-    const scaleX=canvas.width/pageBounds.width;
-    const scaleY=canvas.height/pageBounds.height;
-    for(const word of page.querySelectorAll(".w.x")){
-      const bounds=word.getBoundingClientRect();
-      const x=(bounds.left-pageBounds.left-3)*scaleX;
-      const y=(bounds.top-pageBounds.top+1)*scaleY;
-      const width=(bounds.width+6)*scaleX;
-      const height=Math.max(2,(bounds.height-2)*scaleY);
-      const radius=Math.min(5*scaleX,height/4,width/4);
-      context.beginPath();
-      if(typeof context.roundRect==="function"){
-        context.roundRect(x,y,width,height,radius);
-      }else{
-        context.rect(x,y,width,height);
-      }
-      const ink=context.createLinearGradient(x,y,x,y+height);
-      ink.addColorStop(0,"#050505");
-      ink.addColorStop(0.5,"#161616");
-      ink.addColorStop(1,"#050505");
-      context.fillStyle=ink;
-      context.fill();
-    }
     const safeTitle=(title||"blackout-poem")
       .toLowerCase()
       .normalize("NFKD")
