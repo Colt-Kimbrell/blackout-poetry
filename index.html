@@ -46,6 +46,7 @@ button[aria-pressed=true]{background:var(--ui);color:var(--ink)}
   <h1>Blackout Poetry</h1>
   <input id="q" type="search" placeholder="Search the library: title or author" aria-label="Search the library">
   <button id="go">Search</button>
+  <button id="surprise">🎲 Surprise Me</button>
   <button id="pasteBtn">Paste your own</button>
   <label class="fbtn" for="file">Open .txt file</label><input id="file" type="file" accept=".txt,text/plain" hidden>
 </header>
@@ -97,6 +98,27 @@ async function searchBooks(query){
   const response=await apiFetch("/api/books?q="+encodeURIComponent(query));
   return response.json();
 }
+// ---------- Surprise Me: random catalog book ----------
+async function surpriseMe(){
+  const button=$("#surprise");
+  button.disabled=true;
+  button.textContent="Choosing…";
+  $("#msg").textContent="Choosing a surprise book…";
+  try{
+    const response=await apiFetch("/api/random-book");
+    const book=await response.json();
+    if(!book || !book.id)throw new Error("No book was returned");
+    const author=(book.author||"Unknown").split(", ").reverse().join(" ");
+    await openBook(book.title,author,book.id);
+  }catch(error){
+    $("#msg").textContent="Surprise Me failed ("+error.message+"). Try again.";
+  }finally{
+    button.disabled=false;
+    button.textContent="🎲 Surprise Me";
+  }
+}
+$("#surprise").onclick=surpriseMe;
+
 async function search(){
   const q=$("#q").value.trim(); if(!q)return;
   $("#msg").textContent="Searching the shelves…";$("#shelf").innerHTML="";
