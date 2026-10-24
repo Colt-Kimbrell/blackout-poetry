@@ -44,7 +44,7 @@ button[aria-pressed=true]{background:var(--ui);color:var(--ink)}
 <body>
 <header>
   <h1>Blackout Poetry</h1>
-  <input id="q" type="search" placeholder="Search Project Gutenberg: title or author" aria-label="Search Project Gutenberg">
+  <input id="q" type="search" placeholder="Search the library: title or author" aria-label="Search the library">
   <button id="go">Search</button>
   <button id="pasteBtn">Paste your own</button>
   <label class="fbtn" for="file">Open .txt file</label><input id="file" type="file" accept=".txt,text/plain" hidden>
@@ -101,9 +101,11 @@ async function search(){
   try{
     const d=await searchBooks(q);
     if(!d.results.length){$("#msg").textContent="No books found. Try another title or author.";return}
+    const eligible=d.results.filter(b=>b.media_type==="Text" && Object.keys(b.formats||{}).some(k=>k.startsWith("text/plain")));
+    if(!eligible.length){$("#msg").textContent="No readable text editions found for that search.";return}
     $("#msg").textContent="Choose a book:";
-    d.results.filter(b=>b.media_type==="Text" && b.copyright===false && Object.keys(b.formats||{}).some(k=>k.startsWith("text/plain"))).slice(0,10).forEach(b=>{
-      const au=(b.authors[0]?.name||"Unknown").split(", ").reverse().join(" ");
+    eligible.slice(0,10).forEach(b=>{
+      const au=(b.authors?.[0]?.name||"Unknown").split(", ").reverse().join(" ");
       const el=document.createElement("button");el.className="pick";
       el.innerHTML="<b></b><span></span>";el.firstChild.textContent=b.title;el.lastChild.textContent=au;
       el.onclick=()=>openBook(b.title,au,b.id);$("#shelf").append(el);
