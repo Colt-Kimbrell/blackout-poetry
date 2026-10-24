@@ -237,10 +237,38 @@ $("#savePng").onclick=async()=>{
       onclone:clonedDocument=>{
         // Prevent capture mid-animation and remove hover effects.
         const style=clonedDocument.createElement("style");
-        style.textContent=".w.x::after{animation:none!important}.w:hover{background:transparent!important}";
+        style.textContent=".w.x::after{content:none!important}.w:hover{background:transparent!important}";
         clonedDocument.head.appendChild(style);
       }
     });
+    // Paint the blackout ink directly onto the PNG canvas.
+    // html2canvas does not reliably capture CSS ::after strokes.
+    // Suppress those pseudo-elements in the cloned document above,
+    // then draw each marked word as actual pixels on the canvas.
+    const context=canvas.getContext("2d");
+    const pageBounds=page.getBoundingClientRect();
+    const scaleX=canvas.width/pageBounds.width;
+    const scaleY=canvas.height/pageBounds.height;
+    for(const word of page.querySelectorAll(".w.x")){
+      const bounds=word.getBoundingClientRect();
+      const x=(bounds.left-pageBounds.left-3)*scaleX;
+      const y=(bounds.top-pageBounds.top+1)*scaleY;
+      const width=(bounds.width+6)*scaleX;
+      const height=Math.max(2,(bounds.height-2)*scaleY);
+      const radius=Math.min(5*scaleX,height/4,width/4);
+      context.beginPath();
+      if(typeof context.roundRect==="function"){
+        context.roundRect(x,y,width,height,radius);
+      }else{
+        context.rect(x,y,width,height);
+      }
+      const ink=context.createLinearGradient(x,y,x,y+height);
+      ink.addColorStop(0,"#050505");
+      ink.addColorStop(0.5,"#161616");
+      ink.addColorStop(1,"#050505");
+      context.fillStyle=ink;
+      context.fill();
+    }
     const safeTitle=(title||"blackout-poem")
       .toLowerCase()
       .normalize("NFKD")
