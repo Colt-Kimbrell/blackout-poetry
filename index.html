@@ -227,43 +227,58 @@ $("#savePng").onclick=async()=>{
   button.textContent="Saving…";
   try{
     await document.fonts.ready;
-    // Make the export clone match the page's actual layout width.
-    // Add real ink elements in the clone instead of painting at
-    // viewport-derived coordinates (which caused oversized marks).
-    const pageWidth=page.getBoundingClientRect().width;
-    const canvas=await html2canvas(page,{
-      backgroundColor:null,
-      scale:2,
-      width:pageWidth,
-      windowWidth:Math.max(document.documentElement.clientWidth,Math.ceil(pageWidth)),
-      useCORS:true,
-      logging:false,
-      onclone:clonedDocument=>{
-        const style=clonedDocument.createElement("style");
-        style.textContent=`
-          .w.x::after{content:none!important;animation:none!important}
-          .w:hover{background:transparent!important}
-          .w .export-ink{
-            position:absolute;pointer-events:none;z-index:1;
-            left:-3px;right:-3px;
-            top:var(--t,5%);bottom:var(--b,2%);
-            background:linear-gradient(#050505,#161616 45%,#050505);
-            border-radius:var(--r1,3px) var(--r2,5px) var(--r3,2px) var(--r4,6px);
-            clip-path:polygon(0 var(--a,6%),4% 0,96% var(--c,3%),100% var(--d,10%),99% 90%,94% 100%,5% var(--e,96%),0 88%);
-            transform:rotate(var(--rot,0deg));transform-origin:left center;
-            box-shadow:0 0 1.5px #000;
-          }
+    // Measure the live page before html2canvas makes its offscreen clone.
+    // All rectangles are relative to the page, never the viewport.
+    const pageRect = page.getBoundingClientRect();
+    const inkRects = [...page.querySelectorAll(".w.x:not(.hide)")].map(word => {
+      const rect = word.getBoundingClientRect();
+      const style = getComputedStyle(word);
+      return {
+        x: rect.left - pageRect.left,
+        y: rect.top - pageRect.top,
+        width: rect.width,
+        height: rect.height,
+        rotation: parseFloat(style.getPropertyValue("--rot")) || 0
+      };
+    });
+
+    // Capture only the page artwork. Suppress the CSS-generated ink in
+    // the capture; we paint it ourselves using measured page coordinates.
+    const canvas = await html2canvas(page, {
+      backgroundColor: null,
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      onclone: clonedDocument => {
+        const style = clonedDocument.createElement("style");
+        style.textContent = `
+          .w.x::after { content:none!important; animation:none!important; }
+          .w:hover { background:transparent!important; }
         `;
         clonedDocument.head.appendChild(style);
-        const clonePage=clonedDocument.getElementById("page");
-        for(const word of clonePage.querySelectorAll(".w.x:not(.hide)")){
-          const ink=clonedDocument.createElement("span");
-          ink.className="export-ink";
-          ink.setAttribute("aria-hidden","true");
-          word.appendChild(ink);
-        }
       }
     });
+
+    const ctx = canvas.getContext("2d");
+    const scaleX = canvas.width / pageRect.width;
+    const scaleY = canvas.height / pageRect.height;
+    const radius = 3;
+
+    // Draw ink with explicit canvas dimensions, so device pixel ratio
+    // and screenshot scaling cannot enlarge or shift the marks.
+    for (const rect of inkRects) {
+      const x = (rect.x - 2) * scaleX;
+      const y = (rect.y + rect.height * 0.12) * scaleY;
+      const w = (rect.width + 4) * scaleX;
+      const h = rect.height * 0.76 * scaleY;
+      if (w <= 0 || h <= 0) continue;
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, radius * Math.min(scaleX, scaleY));
+      ctx.fillStyle = "#080808";
+      ctx.fill();
+      ctx.restore();
+    }
     const safeTitle=(title||"blackout-poem")
       .toLowerCase()
       .normalize("NFKD")
