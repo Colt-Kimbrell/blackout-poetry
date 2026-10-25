@@ -16,7 +16,6 @@ input[type=search]{flex:1 1 220px;min-width:0;padding:9px 12px;border:1px solid 
 button{font:inherit;font-size:.95rem;padding:8px 13px;border:1px solid #8a7556;border-radius:3px;background:#4a3a2c;color:var(--ui);cursor:pointer}
 button:hover{background:#5a4838}button:focus-visible,input:focus-visible,.pick:focus-visible{outline:2px solid #e8b04a;outline-offset:2px}
 button[aria-pressed=true]{background:var(--ui);color:var(--ink)}
-.fbtn{font-size:.95rem;padding:8px 13px;border:1px solid #8a7556;border-radius:3px;background:#4a3a2c;color:var(--ui);cursor:pointer}
 #shelf{max-width:760px;margin:14px auto 0;padding:0 18px}
 .pick{display:block;width:100%;text-align:left;margin:0 0 6px;padding:10px 12px;background:#33271e;border:1px solid #5a4838;border-radius:3px}
 .pick b{font-weight:400;font-size:1.05rem}.pick span{display:block;color:#bfae92;font-size:.88rem}
@@ -48,7 +47,6 @@ button[aria-pressed=true]{background:var(--ui);color:var(--ink)}
   <button id="go">Search</button>
   <button id="surprise">🎲 Surprise Me</button>
   <button id="pasteBtn">Paste your own</button>
-  <label class="fbtn" for="file">Open .txt file</label><input id="file" type="file" accept=".txt,text/plain" hidden>
 </header>
 <div id="msg">Search for a book, or open the sample page below to start striking words.</div>
 <div id="shelf"></div>
@@ -134,7 +132,7 @@ async function search(){
       el.innerHTML="<b></b><span></span>";el.firstChild.textContent=b.title;el.lastChild.textContent=au;
       el.onclick=()=>openBook(b.title,au,b.id);$("#shelf").append(el);
     });
-  }catch(e){$("#msg").textContent="Search failed ("+e.message+"). Pick one of these popular books instead, or open a .txt file you downloaded from gutenberg.org.";popular()}
+  }catch(e){$("#msg").textContent="Search failed ("+e.message+"). Pick one of these popular books instead, or paste your own text.";popular()}
 }
 const POP=[[84,"Frankenstein","Mary Shelley"],[1342,"Pride and Prejudice","Jane Austen"],[345,"Dracula","Bram Stoker"],[11,"Alice's Adventures in Wonderland","Lewis Carroll"],[2701,"Moby Dick","Herman Melville"],[1661,"The Adventures of Sherlock Holmes","Arthur Conan Doyle"],[43,"Strange Case of Dr Jekyll and Mr Hyde","Robert Louis Stevenson"],[1400,"Great Expectations","Charles Dickens"]];
 function popular(){
@@ -145,16 +143,6 @@ function popular(){
     el.onclick=()=>openBook(t,a,id);sh.append(el);
   });
 }
-$("#file").onchange=e=>{
-  const f=e.target.files[0];if(!f)return;
-  f.text().then(t=>{
-    const m=t.match(/Title:\s*(.+)/),a=t.match(/Author:\s*(.+)/);
-    let x=t.replace(/\r/g,"");const s=x.search(/\*\*\* ?START OF[^\n]*\n/);if(s>=0)x=x.slice(x.indexOf("\n",s)+1);
-    const en=x.search(/\*\*\* ?END OF/);if(en>=0)x=x.slice(0,en);
-    load(x,m?m[1].trim():f.name.replace(/\.txt$/i,""),a?a[1].trim():"",true);
-    $("#shelf").innerHTML="";$("#msg").textContent="Strike words with your mouse or finger. Drag across a line to cross out many at once.";
-  });
-};
 async function openBook(t,a,id){
   $("#msg").textContent="Fetching “"+t+"”…";$("#shelf").innerHTML="";
   try{
@@ -170,8 +158,9 @@ async function openBook(t,a,id){
 // ---------- Paging ----------
 function load(txt,t,a,skipFront){
   title=t;author=a;struck={};
-  let paras=txt.split(/\n\s*\n/).map(p=>p.replace(/\s+/g," ").trim()).filter(p=>p.split(" ").length>=8);
+  let paras=txt.split(/\n\s*\n/).map(p=>p.replace(/\s+/g," ").trim()).filter(Boolean);
   if(skipFront)paras=paras.slice(Math.min(6,Math.floor(paras.length/10)));
+  if(!paras.length){$("#msg").textContent="No readable text found. Please try another passage.";return;}
   pages=[];let page=[],n=0;
   for(const p of paras){
     const wc=p.split(" ").length;
@@ -308,7 +297,7 @@ $("#savePng").onclick=async()=>{
 document.addEventListener("keydown",e=>{if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA")return;if(e.key==="ArrowRight")$("#next").click();if(e.key==="ArrowLeft")$("#prev").click()});
 $("#go").onclick=search;$("#q").addEventListener("keydown",e=>{if(e.key==="Enter")search()});
 $("#pasteBtn").onclick=()=>{const p=$("#paste");p.style.display=p.style.display==="block"?"none":"block"};
-$("#ptGo").onclick=()=>{const t=$("#pt").value.trim();if(t){load(t,"Your text","",false);$("#paste").style.display="none"}};
+$("#ptGo").onclick=()=>{const t=$("#pt").value.trim();if(t){load(t,"Your text","",false);$("#paste").style.display="none";$("#msg").textContent="Strike words with your mouse or finger to create your poem."}};
 load(SAMPLE,"Pride and Prejudice","Jane Austen",false);
 popular();
 </script>
